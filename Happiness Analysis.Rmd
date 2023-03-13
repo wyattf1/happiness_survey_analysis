@@ -1,0 +1,122 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+#install.packages("randomForest")
+#install.packages('varImp')
+library(varImp)
+library(randomForest)
+#library(tidyverse)
+#library(caret)
+library(xgboost)
+library(Ckmeans.1d.dp)
+#library(pdp)
+library(AmesHousing)
+#library(tidyverse)
+library(MASS)
+library(visreg)
+library(brglm)
+library(car)
+library(mgcv)
+#library(unbalanced)
+#library(multcomp)
+#library(rJava)
+#library(glmulti)
+library(givitiR)
+library(DescTools)
+#library(ggplot2)
+library(ROCR)
+#library(InformationValue)
+library(brant)
+library(VGAM)
+library(nnet)
+```
+
+
+```{r}
+#read in the data from Github Repo
+happiness <- read.csv('https://raw.githubusercontent.com/wyattf1/happiness_survey_analysis/main/Happiness%20Survey%20(Responses)%20-%20Form%20Responses%201.csv')
+
+# DATA PREPROCESSING
+
+# drop the variable "Timestamp" from the data frame
+happiness <- happiness %>% select(-Timestamp)
+
+# create a vector of new column names
+new_colnames <- c("how_happy", "journal_per_month", "exercise_per_week", "sleep_per_night", "pets", "fruit_freq", "vegetables_freq", "meat_freq", "smoke", "relationship_status")
+
+# change the column names of the data frame
+colnames(happiness) <- new_colnames
+
+# convert the ordinal levels to numeric and convert binary variables into factors
+
+happiness$how_happy <- factor(happiness$how_happy, ordered = TRUE, levels <- c('Far below average', 'Below average', 'Average', 'Above average', 'Far above average'))
+
+happiness$journal_per_month <- factor(happiness$journal_per_month, ordered = TRUE, levels <- c('0', '1-2', '3-5', '6+'))
+
+happiness$exercise_per_week <- factor(happiness$exercise_per_week, ordered = TRUE, levels <- c('0', '1-3', '4-5', '6-7'))
+
+happiness$sleep_per_night <- factor(happiness$sleep_per_night, ordered = TRUE, levels <- c('2-4', '5-6', '7-8', '9-10'))
+
+happiness$pets <- as.factor(happiness$pets)
+
+happiness$fruit_freq <- factor(happiness$fruit_freq, ordered = TRUE, levels <- c('Never', 'Sometimes', 'Often', 'Daily'))
+
+happiness$vegetables_freq <- factor(happiness$vegetables_freq, ordered = TRUE, levels <- c('Never', 'Sometimes', 'Often', 'Daily'))
+
+happiness$meat_freq <- factor(happiness$meat_freq, ordered = TRUE, levels <- c('Never', 'Sometimes', 'Often', 'Daily'))
+
+happiness$smoke <- as.factor(happiness$smoke)
+
+happiness$relationship_status <- as.factor(happiness$relationship_status)
+```
+
+```{r}
+print(happiness)
+```
+
+
+
+```{r}
+# random forest
+set.seed(1)
+rf.happiness <- randomForest(how_happy ~ ., data = happiness, 
+ntree = 200, importance = TRUE)
+
+```
+
+```{r}
+# To see the variable importance
+importance <- importance(rf.happiness)
+varImpPlot(rf.happiness)
+```
+
+```{r}
+print(rf.happiness)
+```
+
+```{r}
+#create the ordinal logistic regression model
+model <- polr(how_happy ~ journal_per_month + exercise_per_week + sleep_per_night + pets + fruit_freq + vegetables_freq + meat_freq + smoke + relationship_status, data = happiness, method = "logistic")
+
+#print the summary of the model
+summary(model)
+```
+
+Brant Test for proportional odds
+```{r}
+install.packages('brant')
+library('brant')
+brant(model)
+```
+partial proportional odds
+```{r}
+library('VGAM')
+plogit.model <- vglm(how_happy ~ journal_per_month + exercise_per_week + sleep_per_night + pets + fruit_freq + vegetables_freq + meat_freq + smoke + relationship_status, 
+data = happiness, 
+family = cumulative(parallel = F ~ pets)) 
+summary(plogit.model)
+```
+
